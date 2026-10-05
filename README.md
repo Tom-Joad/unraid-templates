@@ -34,9 +34,10 @@ they differ in two lines:
   Applications expects.
 - `<Icon>` points at the app's icon in `icons/`.
 
-To pick up a changed project template, run `sh scripts/sync.sh` and commit
-the result. The check workflow runs the script every week and fails when a
-copy is out of date.
+The sync workflow runs the script every day. When a project changed its
+template, it opens (or updates) a pull request from `sync/templates`; merging
+it publishes the change to Community Applications. It can also be started by
+hand from the Actions tab.
 
 The icons are rendered by [icons/src/make_icons.py](icons/src/make_icons.py)
 (Anton, SIL Open Font License 1.1). `icon.png` is the publisher mark.
