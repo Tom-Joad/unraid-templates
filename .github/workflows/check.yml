@@ -3,9 +3,6 @@ name: Check templates
 on:
   push:
   pull_request:
-  schedule:
-    # Weekly, to notice when a project changed its template.
-    - cron: "17 4 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -46,10 +43,3 @@ jobs:
           print("\n".join(errors) or "all templates ok")
           sys.exit(1 if errors else 0)
 
-      - name: Copies match the project templates
-        run: |
-          sh scripts/sync.sh
-          if ! git diff --exit-code -- templates; then
-            echo "::error::A project template changed. Run sh scripts/sync.sh and commit the result."
-            exit 1
-          fi

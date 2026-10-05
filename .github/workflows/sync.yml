@@ -1,0 +1,64 @@
+name: Sync templates
+
+on:
+  schedule:
+    # Daily, to pick up template changes in the projects.
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency: sync-templates
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # push the sync branch
+      pull-requests: write  # open, update or close the pull request
+      actions: write        # start the check on the sync branch
+    env:
+      BRANCH: sync/templates
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Copy the project templates
+        run: sh scripts/sync.sh
+
+      - name: Open, update or close the pull request
+        run: |
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+
+          if git diff --quiet -- templates; then
+            echo "Templates are current."
+            if [ -n "$pr" ]; then
+              gh pr close "$pr" --delete-branch \
+                --comment "The templates on main match the projects again; nothing to sync."
+            fi
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add templates
+          changed=$(git diff --cached --name-only | sed 's/^/- /')
+          git commit -q -m "Sync templates from the projects" -m "$changed"
+          git push -q --force origin "$BRANCH"
+
+          # Pushes made with GITHUB_TOKEN start no workflows; a manual run
+          # does, and its result shows up on the pull request's commit.
+          gh workflow run check.yml --ref "$BRANCH"
+
+          body=$(printf '%s\n\n%s\n\n%s\n' \
+            "One or more projects changed their Unraid template. scripts/sync.sh copied them:" \
+            "$changed" \
+            "Review the diff and merge once the check is green. Community Applications picks up the change after the merge.")
+          if [ -n "$pr" ]; then
+            gh pr edit "$pr" --body "$body"
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "Sync templates from the projects" --body "$body"
+          fi
