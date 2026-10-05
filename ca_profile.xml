@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<CommunityApplications>
+  <Profile>
+Unraid templates for the container images published by Tom-Joad:
+
+- **scanbutler**: turns scanned paper into named, searchable PDFs; splits large stacks by content and feeds Paperless-ngx
+- **tdld**: yt-dlp on a timer, with a small web UI for the download lists
+- **cf-managed-network-endpoint**: TLS endpoint for Cloudflare Zero Trust managed network detection
+- **ucg-config-backup**: scheduled config backups of a Ubiquiti UCG Ultra over the local UniFi OS API
+- **wol-relay-container**: HTTP relay that sends Wake-on-LAN magic packets, e.g. for Home Assistant
+
+All images are open source (MIT), built on GitHub Actions for amd64 and arm64 and published on GHCR. Support for an app goes to that app's GitHub issues, linked from each template; a problem with a template itself goes to this repository's issues.
+  </Profile>
+  <Icon>https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/icon.png</Icon>
+  <WebPage>https://github.com/Tom-Joad/unraid-templates</WebPage>
+</CommunityApplications>

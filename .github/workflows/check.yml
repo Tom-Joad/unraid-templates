@@ -1,0 +1,55 @@
+name: Check templates
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # Weekly, to notice when a project changed its template.
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: XML is well-formed and complete
+        shell: python
+        run: |
+          import glob, os, sys
+          import xml.etree.ElementTree as ET
+
+          base = "https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/"
+          errors = []
+          ET.parse("ca_profile.xml")
+          for path in sorted(glob.glob("templates/*.xml")):
+              root = ET.parse(path).getroot()
+              get = lambda tag: (root.findtext(tag) or "").strip()
+              if root.tag != "Container" or root.get("version") != "2":
+                  errors.append(f"{path}: not a v2 <Container>")
+              for tag in ("Name", "Repository", "Overview", "Category", "Icon"):
+                  if not get(tag):
+                      errors.append(f"{path}: <{tag}> is empty")
+              if not (get("Support") or get("Project")):
+                  errors.append(f"{path}: needs <Support> or <Project>")
+              if get("TemplateURL") != base + path:
+                  errors.append(f"{path}: <TemplateURL> must be {base + path}")
+              icon = get("Icon")
+              if icon.startswith(base) and not os.path.isfile(icon[len(base):]):
+                  errors.append(f"{path}: icon file {icon[len(base):]} is missing")
+              if any(p in get("ExtraParams") for p in ("--restart", "--init")):
+                  errors.append(f"{path}: --restart/--init in <ExtraParams>")
+          print("\n".join(errors) or "all templates ok")
+          sys.exit(1 if errors else 0)
+
+      - name: Copies match the project templates
+        run: |
+          sh scripts/sync.sh
+          if ! git diff --exit-code -- templates; then
+            echo "::error::A project template changed. Run sh scripts/sync.sh and commit the result."
+            exit 1
+          fi

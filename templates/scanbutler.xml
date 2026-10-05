@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>scanbutler</Name>
+  <Repository>ghcr.io/tom-joad/scanbutler:latest</Repository>
+  <Registry>https://ghcr.io</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Tom-Joad/scanbutler</Support>
+  <Project>https://github.com/Tom-Joad/scanbutler</Project>
+  <TemplateURL>https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/templates/scanbutler.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/icons/scanbutler.png</Icon>
+  <Overview>
+    Turns scanned paper into searchable PDFs, one per document, named by topic and date. The
+    Stacks input splits large scans (hundreds of pages, no separator sheets) into documents by
+    content. The Scanner input takes files from a document scanner, one document per file, and
+    gives them the same OCR and naming. Uses Mistral OCR (batch API) and a Mistral chat model;
+    the text layer comes from a fresh Tesseract pass. No web UI: progress is in the container
+    log, and a review.md per stack in the Work folder lists uncertain splits. An optional third
+    input only adds the text layer and uploads to Paperless-ngx. Optionally reports the queue to
+    a webhook such as Home Assistant. Needs a Mistral API key.
+  </Overview>
+  <Category>Productivity: Tools:</Category>
+  <ExtraParams>--security-opt no-new-privileges --memory=4g</ExtraParams>
+  <Config Name="Stacks" Target="/data/stacks" Default="/mnt/user/Documents/scanbutler/stacks" Mode="rw" Description="Large scans to split. inbox/, output/, archive/ and failed/ are created here." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="Scanner" Target="/data/scanner" Default="/mnt/user/Documents/scanbutler/scanner" Mode="rw" Description="Scanner input, one document per file. Point the scanner's network-folder target at inbox/ below this path." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="Paperless" Target="/data/paperless" Default="/mnt/user/Documents/scanbutler/paperless" Mode="rw" Description="Optional Paperless-ngx input (needs PAPERLESS_URL): files get the text layer and are uploaded to Paperless." Type="Path" Display="always" Required="false" Mask="false"/>
+  <Config Name="Paperless 2" Target="/data/paperless-2" Default="" Mode="rw" Description="Optional second Paperless input (needs PAPERLESS_2_TOKEN): uploads as another Paperless user, so its documents belong to that user." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/scanbutler" Mode="rw" Description="Per-stack OCR text, plan.json, review.md and temporary page images (several GB while a large stack is processed). Holds full document text: delete stacks you no longer need." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User that owns new files (nobody)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group for new files (users)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="UMASK" Target="UMASK" Default="002" Mode="" Description="002: new files are writable for the users group, e.g. over SMB" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MISTRAL_API_KEY" Target="MISTRAL_API_KEY" Default="" Mode="" Description="Mistral API key" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="MISTRAL_LLM_MODEL" Target="MISTRAL_LLM_MODEL" Default="mistral-large-latest" Mode="" Description="Model for splitting and naming" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="MISTRAL_MAX_RPS" Target="MISTRAL_MAX_RPS" Default="1" Mode="" Description="Requests per second, slightly below your account's limit for MISTRAL_LLM_MODEL (Mistral console: API &gt; Limits)" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="TITLE_LANGUAGE" Target="TITLE_LANGUAGE" Default="" Mode="" Description="Language for document titles, e.g. German. Empty: the language of each document." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="NO_DATE_LABEL" Target="NO_DATE_LABEL" Default="undated" Mode="" Description="Used in the file name when a document has no date" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="OCRMYPDF_LANGUAGES" Target="OCRMYPDF_LANGUAGES" Default="deu+eng" Mode="" Description="Tesseract languages joined with +, e.g. deu+eng+fra. deu and eng are built in; others are downloaded once into the Config folder" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="OCRMYPDF_JOBS" Target="OCRMYPDF_JOBS" Default="auto" Mode="" Description="Parallel OCR pages. auto: as many as the container's memory allows (--memory in Extra Parameters), at most one per CPU the container may use. Scanner and Paperless files go ahead of stacks" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_URL" Target="PAPERLESS_URL" Default="" Mode="" Description="Optional: Paperless-ngx base URL, e.g. http://NAS-IP:8000. Enables the Paperless input." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_TOKEN" Target="PAPERLESS_TOKEN" Default="" Mode="" Description="API token of the Paperless user that should own the uploaded documents" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="PAPERLESS_TEXT_SOURCE" Target="PAPERLESS_TEXT_SOURCE" Default="tesseract" Mode="" Description="tesseract: Paperless content from the text layer (free). mistral: content replaced with Mistral OCR text, tables kept (about $1 per 500 pages)." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_TAGS" Target="PAPERLESS_TAGS" Default="" Mode="" Description="Optional: comma-separated Paperless tag ids to add on upload, e.g. 3,7" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_2_TOKEN" Target="PAPERLESS_2_TOKEN" Default="" Mode="" Description="Optional: API token of a second Paperless user. Enables the second input (Paperless 2 path); its uploads belong to that user" Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="PAPERLESS_2_URL" Target="PAPERLESS_2_URL" Default="" Mode="" Description="Optional: Paperless URL for the second input. Empty: same as PAPERLESS_URL" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_2_TAGS" Target="PAPERLESS_2_TAGS" Default="" Mode="" Description="Optional: comma-separated tag ids to add on upload through the second input" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_SHARE_TAGS" Target="PAPERLESS_SHARE_TAGS" Default="false" Mode="" Description="true: remove the owner from every Paperless tag, every minute, so all users see the same tags. Needs a superuser token." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_SHARE_CORRESPONDENTS" Target="PAPERLESS_SHARE_CORRESPONDENTS" Default="false" Mode="" Description="true: remove the owner from every Paperless correspondent, so all users see them (also who writes to whom). Needs a superuser token." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_SHARE_DOCUMENT_TYPES" Target="PAPERLESS_SHARE_DOCUMENT_TYPES" Default="false" Mode="" Description="true: remove the owner from every Paperless document type, so all users see them. Needs a superuser token." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PAPERLESS_SHARE_TAGS_READONLY" Target="PAPERLESS_SHARE_TAGS_READONLY" Default="" Mode="" Description="Optional: comma-separated tag names that keep their owner and are only visible to other users, e.g. ai-processed" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="QUEUE_WEBHOOK_URL" Target="QUEUE_WEBHOOK_URL" Default="" Mode="" Description="Optional: POST queue counts here on every change and every 5 minutes, e.g. a Home Assistant webhook (http://HA:8123/api/webhook/ID). See the project README for the sensor config." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="STACKS_TEXT_SOURCE" Target="STACKS_TEXT_SOURCE" Default="mistral" Mode="" Description="Text for splitting and naming stacks: mistral (Mistral OCR, paid) or tesseract (free, from the text layer)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="SCANNER_TEXT_SOURCE" Target="SCANNER_TEXT_SOURCE" Default="tesseract" Mode="" Description="Text for naming scanner files: tesseract (free, from the text layer) or mistral (Mistral OCR, paid; worth it for handwriting or poor scans)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="OCR_MODE" Target="OCR_MODE" Default="batch" Mode="" Description="batch: half price, minutes per job. direct: immediate, full price." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="WORK_RETENTION_DAYS" Target="WORK_RETENTION_DAYS" Default="30" Mode="" Description="Days after which a processed file's work folder in Config is deleted (rebuild works until then). 0 keeps everything" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="FILENAME_PATTERN" Target="FILENAME_PATTERN" Default="{title} {date}" Mode="" Description="{title} is required, {date} is YYYY-MM-DD" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

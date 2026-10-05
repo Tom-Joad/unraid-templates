@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>cf-managed-network-endpoint</Name>
+  <Repository>ghcr.io/tom-joad/cf-managed-network-endpoint:latest</Repository>
+  <Registry>https://ghcr.io</Registry>
+  <Network>br0</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Tom-Joad/cf-managed-network-endpoint</Support>
+  <Project>https://github.com/Tom-Joad/cf-managed-network-endpoint</Project>
+  <TemplateURL>https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/templates/cf-managed-network-endpoint.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/icons/cf-managed-network-endpoint.png</Icon>
+  <Overview>
+    TLS endpoint for Cloudflare Zero Trust "Managed Networks". Serves a self-signed
+    certificate on port 6443; the Cloudflare WARP client compares its SHA-256 fingerprint
+    to tell whether a device is on the home network. No application logic.
+
+    The certificate is created once, on the very first start, and kept in the Config
+    folder (keys/). As long as that folder survives, the fingerprint stays the same across
+    restarts and image updates. NEVER delete it: a new certificate means a new fingerprint,
+    and network detection breaks silently. Include the appdata folder in your backups.
+
+    The fingerprint is printed in the container log on every start (Unraid: container icon
+    -> Logs).
+
+    Upgrading from a version before 1.0.0: keep the old /certs path below for the first
+    start, so the existing certificate is taken over. Then remove it.
+
+    Network: a custom VLAN interface (e.g. br0.10) must exist on the machine; set a static
+    IP outside the DHCP pool in this container's "Fixed IP address" setting.
+  </Overview>
+  <Category>Network:Other Security:</Category>
+  <ExtraParams/>
+  <WebUI/>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/cf-managed-network-endpoint" Mode="rw" Description="Holds the key pair (keys/) and the nginx config. NEVER delete it: a new certificate means a new fingerprint and Cloudflare network detection breaks." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="Old certificate volume (upgrade only)" Target="/certs" Default="" Mode="ro" Description="Only when upgrading from a version before 1.0.0: your old .../certs folder, read once to take over the certificate. Remove afterwards." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User that owns the key pair (nobody)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group for the key pair (users)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="UMASK" Target="UMASK" Default="002" Mode="" Description="Permissions mask for new files" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="TZ" Target="TZ" Default="Etc/UTC" Mode="" Description="Time zone for the log, e.g. Europe/Berlin" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>
