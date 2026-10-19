@@ -17,6 +17,7 @@ tdld                         TDLD                         unraid/tdld.xml
 cf-managed-network-endpoint  cf-managed-network-endpoint  unraid/cf-managed-network-endpoint.xml
 ucg-config-backup            ucg-config-backup            unraid/ucg-config-backup.xml
 wol-relay-container          wol-relay-container          unraid/wol-relay-container.xml
+panacontrol                  PanaControl                  unraid/PanaControl.xml
 '
 
 cd "$(dirname "$0")/.."

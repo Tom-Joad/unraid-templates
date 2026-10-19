@@ -8,8 +8,9 @@ Unraid templates for the container images published by Tom-Joad:
 - **cf-managed-network-endpoint**: TLS endpoint for Cloudflare Zero Trust managed network detection
 - **ucg-config-backup**: scheduled config backups of a Ubiquiti UCG Ultra over the local UniFi OS API
 - **wol-relay-container**: HTTP relay that sends Wake-on-LAN magic packets, e.g. for Home Assistant
+- **panacontrol**: remote control and live view for LUMIX cameras in the browser: autofocus, recording, ISO
 
-All images are open source (MIT), built on GitHub Actions for amd64 and arm64 and published on GHCR. Support for an app goes to that app's GitHub issues, linked from each template; a problem with a template itself goes to this repository's issues.
+All images are open source (MIT), built on GitHub Actions for amd64 (all but panacontrol also for arm64) and published on GHCR. Support for an app goes to that app's GitHub issues, linked from each template; a problem with a template itself goes to this repository's issues.
   </Profile>
   <Icon>https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/icon.png</Icon>
   <WebPage>https://github.com/Tom-Joad/unraid-templates</WebPage>
