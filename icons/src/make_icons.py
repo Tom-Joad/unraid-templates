@@ -17,6 +17,7 @@ ICONS = {
     "cf-managed-network-endpoint": ["CF", "ENDPOINT"],
     "ucg-config-backup": ["UCG", "BACKUP"],
     "wol-relay-container": ["WOL", "RELAY"],
+    "panacontrol": ["PANA", "CONTROL"],
 }
 
 src, out = sys.argv[1], sys.argv[2]

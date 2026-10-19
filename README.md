@@ -10,6 +10,7 @@ images published by [Tom-Joad](https://github.com/Tom-Joad).
 | cf-managed-network-endpoint | TLS endpoint for Cloudflare Zero Trust managed network detection | [Tom-Joad/cf-managed-network-endpoint](https://github.com/Tom-Joad/cf-managed-network-endpoint) |
 | ucg-config-backup | Scheduled config backups of a Ubiquiti UCG Ultra over the local UniFi OS API | [Tom-Joad/ucg-config-backup](https://github.com/Tom-Joad/ucg-config-backup) |
 | wol-relay-container | HTTP relay that sends Wake-on-LAN magic packets, e.g. for Home Assistant | [Tom-Joad/wol-relay-container](https://github.com/Tom-Joad/wol-relay-container) |
+| panacontrol | Remote control and live view for LUMIX cameras in the browser: autofocus, recording, ISO | [Tom-Joad/PanaControl](https://github.com/Tom-Joad/PanaControl) |
 
 ## Support
 
