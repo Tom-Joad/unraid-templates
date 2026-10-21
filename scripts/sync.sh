@@ -18,6 +18,7 @@ cf-managed-network-endpoint  cf-managed-network-endpoint  unraid/cf-managed-netw
 ucg-config-backup            ucg-config-backup            unraid/ucg-config-backup.xml
 wol-relay-container          wol-relay-container          unraid/wol-relay-container.xml
 panacontrol                  PanaControl                  unraid/PanaControl.xml
+buybutler                    buybutler                    unraid/Buybutler.xml
 '
 
 cd "$(dirname "$0")/.."
