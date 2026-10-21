@@ -18,6 +18,7 @@ ICONS = {
     "ucg-config-backup": ["UCG", "BACKUP"],
     "wol-relay-container": ["WOL", "RELAY"],
     "panacontrol": ["PANA", "CONTROL"],
+    "buybutler": ["BUY", "BUTLER"],
 }
 
 src, out = sys.argv[1], sys.argv[2]
