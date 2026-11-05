@@ -19,6 +19,8 @@ A question or a bug in an app goes to that app's GitHub issues (linked above
 and in each template). A problem with a template itself (a wrong default, a
 broken link) goes to this repository's issues.
 
+Security problems with a template: see [SECURITY.md](SECURITY.md).
+
 ## Installing without Community Applications
 
 1. In Unraid, open **Docker** → **Add Container**.

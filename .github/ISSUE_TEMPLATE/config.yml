@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: A problem with an app
+    url: https://github.com/Tom-Joad/unraid-templates#readme
+    about: Bugs and questions about an app go to its own repository; the README links them.
+  - name: Report a security problem
+    url: https://github.com/Tom-Joad/unraid-templates/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
