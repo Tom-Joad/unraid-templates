@@ -1,2 +1,5 @@
 .DS_Store
 Thumbs.db
+
+# Python byte code (icons/src/make_icons.py)
+__pycache__/

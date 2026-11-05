@@ -1,0 +1,32 @@
+name: Problem with a template
+description: A template shows a wrong default, a broken link or a missing setting.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository holds only the Unraid templates. A problem with the
+        app itself goes to the app's own repository (see the README).
+
+        Issues are public. **Never post tokens, API keys, passwords, webhook
+        URLs, IP addresses or anything from your own data.** Redact settings
+        before you paste them.
+  - type: dropdown
+    id: template
+    attributes:
+      label: Template
+      options: [buybutler, cf-managed-network-endpoint, panacontrol, scanbutler, tdld, ucg-config-backup, wol-relay-container]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong, and what did you expect?
+      description: The field or link, what Unraid or Community Applications showed.
+    validations:
+      required: true
+  - type: input
+    id: unraid
+    attributes:
+      label: Unraid version
+      placeholder: "7.2.0"
