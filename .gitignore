@@ -3,3 +3,6 @@ Thumbs.db
 
 # Python byte code (icons/src/make_icons.py)
 __pycache__/
+
+# Claude Code's local settings: approved commands can hold tokens
+.claude/settings.local.json
