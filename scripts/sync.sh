@@ -23,13 +23,21 @@ buybutler                    buybutler                    unraid/buybutler.xml
 
 cd "$(dirname "$0")/.."
 
-echo "$APPS" | while read -r app repo path; do
-  [ -n "$app" ] || continue
+# Copy one app. Returns non-zero (and leaves templates/<app>.xml untouched)
+# when it can't, so one broken project doesn't stop the others.
+sync_app() {
+  app=$1 repo=$2 path=$3
   src=https://raw.githubusercontent.com/$OWNER/$repo/main/$path
+  [ -f "icons/$app.png" ] || { echo "$app: icons/$app.png is missing" >&2; return 1; }
   tmp=$(mktemp)
-  curl -fsSL "$src" -o "$tmp"
-  grep -q '<TemplateURL>' "$tmp" || { echo "$src: no <TemplateURL>" >&2; exit 1; }
-  [ -f "icons/$app.png" ] || { echo "icons/$app.png is missing" >&2; exit 1; }
+  err=
+  curl -fsSL "$src" -o "$tmp" || err="cannot fetch $src"
+  [ -n "$err" ] || grep -q '<TemplateURL>' "$tmp" || err="$src has no <TemplateURL>"
+  if [ -n "$err" ]; then
+    echo "$app: $err" >&2
+    rm -f "$tmp"
+    return 1
+  fi
   # Drop any icon of its own, then put ours right after the TemplateURL.
   sed -e '/<Icon>/d' \
       -e "s|<TemplateURL>.*</TemplateURL>|<TemplateURL>$HERE/templates/$app.xml</TemplateURL>\\
@@ -37,4 +45,19 @@ echo "$APPS" | while read -r app repo path; do
       "$tmp" > "templates/$app.xml"
   rm -f "$tmp"
   echo "templates/$app.xml <- $repo/$path"
-done
+}
+
+# Every app is tried; the failures are collected and reported at the end, so
+# the workflow can still propose the templates that were copied.
+failed=
+while read -r app repo path; do
+  [ -n "$app" ] || continue
+  sync_app "$app" "$repo" "$path" || failed="$failed $app"
+done <<EOF
+$APPS
+EOF
+
+if [ -n "$failed" ]; then
+  echo "Not synced:$failed" >&2
+  exit 1
+fi

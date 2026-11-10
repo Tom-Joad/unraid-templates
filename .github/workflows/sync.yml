@@ -24,16 +24,30 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # A project that can't be fetched must not stop the others: the script
+      # copies what it can and exits non-zero; the status is checked in the
+      # last step, after the pull request has been handled.
       - name: Copy the project templates
-        run: sh scripts/sync.sh
+        id: copy
+        run: |
+          status=0
+          sh scripts/sync.sh || status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
 
       - name: Open, update or close the pull request
+        env:
+          SYNC_STATUS: ${{ steps.copy.outputs.status }}
         run: |
           pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
 
-          if git diff --quiet -- templates; then
+          # Stage first: git diff ignores new (untracked) files, and -A also
+          # records a template that was deleted on purpose.
+          git add -A templates
+
+          if git diff --cached --quiet; then
             echo "Templates are current."
-            if [ -n "$pr" ]; then
+            # With a failed project the comparison is incomplete: keep the pull request.
+            if [ -n "$pr" ] && [ "$SYNC_STATUS" = 0 ]; then
               gh pr close "$pr" --delete-branch \
                 --comment "The templates on main match the projects again; nothing to sync."
             fi
@@ -42,8 +56,16 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Same templates as the branch already has: leave it alone, so the
+          # head of a reviewed pull request doesn't change under the reviewer.
+          if [ -n "$pr" ] && git fetch -q --depth=1 origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" 2>/dev/null \
+            && git diff --cached --quiet "origin/$BRANCH" -- templates; then
+            echo "$BRANCH already has these templates; nothing to push."
+            exit 0
+          fi
+
           git switch -c "$BRANCH"
-          git add templates
           changed=$(git diff --cached --name-only | sed 's/^/- /')
           git commit -q -m "Sync templates from the projects" -m "$changed"
           git push -q --force origin "$BRANCH"
@@ -68,3 +90,9 @@ jobs:
             gh pr create --base main --head "$BRANCH" \
               --title "Sync templates from the projects" --body "$body"
           fi
+
+      - name: Fail when a project could not be synced
+        if: steps.copy.outputs.status != '0'
+        run: |
+          echo "scripts/sync.sh could not copy every project; see the first step." >&2
+          exit 1
