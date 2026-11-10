@@ -20,11 +20,12 @@ jobs:
       - name: XML is well-formed and complete
         shell: python
         run: |
-          import glob, os, sys
+          import glob, os, re, sys
           import xml.etree.ElementTree as ET
 
           base = "https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/"
           errors = []
+          secret = re.compile(r"TOKEN|KEY|PASSWORD|SECRET|WEBHOOK", re.I)
           ET.parse("ca_profile.xml")
           for path in sorted(glob.glob("templates/*.xml")):
               root = ET.parse(path).getroot()
@@ -38,11 +39,64 @@ jobs:
                   errors.append(f"{path}: needs <Support> or <Project>")
               if get("TemplateURL") != base + path:
                   errors.append(f"{path}: <TemplateURL> must be {base + path}")
-              icon = get("Icon")
-              if icon.startswith(base) and not os.path.isfile(icon[len(base):]):
-                  errors.append(f"{path}: icon file {icon[len(base):]} is missing")
+              icon_path = f"icons/{os.path.basename(path)[:-4]}.png"
+              if get("Icon") != base + icon_path:
+                  errors.append(f"{path}: <Icon> must be {base + icon_path}")
+              elif not os.path.isfile(icon_path):
+                  errors.append(f"{path}: icon file {icon_path} is missing")
+              if not re.fullmatch(r"ghcr\.io/tom-joad/[a-z0-9._-]+:latest", get("Repository")):
+                  errors.append(f"{path}: <Repository> must be ghcr.io/tom-joad/<image>:latest")
+              if get("Registry") != "https://ghcr.io":
+                  errors.append(f"{path}: <Registry> must be https://ghcr.io")
+              for cfg in root.iter("Config"):
+                  if cfg.get("Type") != "Variable":
+                      continue
+                  var = cfg.get("Target") or cfg.get("Name") or ""
+                  if var == "TZ":
+                      errors.append(f"{path}: TZ variable (Unraid sets the time zone itself)")
+                  # *_FORMAT only selects an output format (WEBHOOK_FORMAT), no secret.
+                  if secret.search(var) and not var.upper().endswith("_FORMAT") and cfg.get("Mask") != "true":
+                      errors.append(f"{path}: {var} holds a secret and needs Mask=\"true\"")
               if any(p in get("ExtraParams") for p in ("--restart", "--init")):
                   errors.append(f"{path}: --restart/--init in <ExtraParams>")
           print("\n".join(errors) or "all templates ok")
           sys.exit(1 if errors else 0)
 
+      - name: Every list of apps names the same set
+        shell: python
+        run: |
+          import glob, os, re, sys
+
+          def read(path):
+              with open(path, encoding="utf-8") as f:
+                  return f.read()
+
+          def names(pattern, text):
+              return set(re.findall(pattern, text, re.M))
+
+          sync = read("scripts/sync.sh")
+          block = re.search(r"^APPS='(.*?)'", sync, re.M | re.S)
+          sets = {
+              "scripts/sync.sh (APPS)": names(r"^(\S+)\s+\S+\s+\S+$", block.group(1)) if block else set(),
+              "templates/": {os.path.basename(p)[:-4] for p in glob.glob("templates/*.xml")},
+              "icons/": {os.path.basename(p)[:-4] for p in glob.glob("icons/*.png")},
+              "icons/src/make_icons.py (ICONS)": names(r'^\s+"([a-z0-9-]+)": \[', read("icons/src/make_icons.py")),
+              "ca_profile.xml": names(r"^- \*\*([a-z0-9-]+)\*\*", read("ca_profile.xml")),
+              "README.md (table)": names(r"^\| ([a-z][a-z0-9-]*) \|", read("README.md")),
+          }
+          options = re.search(r"options: \[(.*?)\]", read(".github/ISSUE_TEMPLATE/bug_report.yml"))
+          sets["bug_report.yml (dropdown)"] = {o.strip() for o in options.group(1).split(",")} if options else set()
+
+          want = sets["scripts/sync.sh (APPS)"]
+          errors = []
+          if not want:
+              errors.append("no apps found in scripts/sync.sh")
+          for where, found in sets.items():
+              if found is want:
+                  continue
+              if missing := want - found:
+                  errors.append(f"{where}: missing {', '.join(sorted(missing))}")
+              if extra := found - want:
+                  errors.append(f"{where}: not in scripts/sync.sh: {', '.join(sorted(extra))}")
+          print("\n".join(errors) or f"all lists name the same {len(want)} apps")
+          sys.exit(1 if errors else 0)
