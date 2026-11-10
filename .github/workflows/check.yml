@@ -25,7 +25,7 @@ jobs:
 
           base = "https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/"
           errors = []
-          secret = re.compile(r"TOKEN|KEY|PASSWORD|SECRET|WEBHOOK")
+          secret = re.compile(r"TOKEN|KEY|PASSWORD|SECRET|WEBHOOK", re.I)
           ET.parse("ca_profile.xml")
           for path in sorted(glob.glob("templates/*.xml")):
               root = ET.parse(path).getroot()
@@ -55,7 +55,7 @@ jobs:
                   if var == "TZ":
                       errors.append(f"{path}: TZ variable (Unraid sets the time zone itself)")
                   # *_FORMAT only selects an output format (WEBHOOK_FORMAT), no secret.
-                  if secret.search(var.upper()) and not var.upper().endswith("_FORMAT") and cfg.get("Mask") != "true":
+                  if secret.search(var) and not var.upper().endswith("_FORMAT") and cfg.get("Mask") != "true":
                       errors.append(f"{path}: {var} holds a secret and needs Mask=\"true\"")
               if any(p in get("ExtraParams") for p in ("--restart", "--init")):
                   errors.append(f"{path}: --restart/--init in <ExtraParams>")
@@ -92,6 +92,8 @@ jobs:
           if not want:
               errors.append("no apps found in scripts/sync.sh")
           for where, found in sets.items():
+              if found is want:
+                  continue
               if missing := want - found:
                   errors.append(f"{where}: missing {', '.join(sorted(missing))}")
               if extra := found - want:
