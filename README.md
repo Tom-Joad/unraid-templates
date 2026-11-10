@@ -46,6 +46,14 @@ hand from the Actions tab.
 The icons are rendered by [icons/src/make_icons.py](icons/src/make_icons.py)
 (Anton, SIL Open Font License 1.1). `icon.png` is the publisher mark.
 
+To render the icons again, install the packages and pass the Anton font
+file (for example `Anton-Regular.ttf` from Google Fonts) and the output folder:
+
+```sh
+pip install pillow fonttools brotli
+python icons/src/make_icons.py Anton-Regular.ttf icons
+```
+
 ## Licence
 
 [MIT](LICENSE)
