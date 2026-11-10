@@ -30,13 +30,11 @@ sync_app() {
   src=https://raw.githubusercontent.com/$OWNER/$repo/main/$path
   [ -f "icons/$app.png" ] || { echo "$app: icons/$app.png is missing" >&2; return 1; }
   tmp=$(mktemp)
-  if ! curl -fsSL "$src" -o "$tmp"; then
-    echo "$app: cannot fetch $src" >&2
-    rm -f "$tmp"
-    return 1
-  fi
-  if ! grep -q '<TemplateURL>' "$tmp"; then
-    echo "$app: $src has no <TemplateURL>" >&2
+  err=
+  curl -fsSL "$src" -o "$tmp" || err="cannot fetch $src"
+  [ -n "$err" ] || grep -q '<TemplateURL>' "$tmp" || err="$src has no <TemplateURL>"
+  if [ -n "$err" ]; then
+    echo "$app: $err" >&2
     rm -f "$tmp"
     return 1
   fi
