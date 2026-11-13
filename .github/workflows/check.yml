@@ -38,6 +38,7 @@ jobs:
 
           base = "https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/"
           errors = []
+          option = re.compile(r"--[\w-]+(?:[ =](?!--)\S+)?")
           allowed_extra = re.compile(
               r"^(--security-opt no-new-privileges|--memory=\S+|--stop-timeout \d+|--read-only"
               r"|--cap-drop ALL|--cap-add SET[UG]ID)$")
@@ -80,10 +81,10 @@ jobs:
                   errors.append(f"{path}: <Privileged> must be false")
               # Same allowlist as Package-Defaults tools/audit.py (ALLOWED_EXTRA).
               extra = get("ExtraParams")
-              for p in re.findall(r"--[\w-]+(?:[ =](?!--)\S+)?", extra):
+              for p in option.findall(extra):
                   if not allowed_extra.match(p):
                       errors.append(f"{path}: <ExtraParams> `{p}` is not in the standard")
-              if re.sub(r"--[\w-]+(?:[ =](?!--)\S+)?", "", extra).strip():
+              if option.sub("", extra).strip():
                   errors.append(f"{path}: <ExtraParams> has text that is not a --option: {extra}")
           print("\n".join(errors) or "all templates ok")
           sys.exit(1 if errors else 0)

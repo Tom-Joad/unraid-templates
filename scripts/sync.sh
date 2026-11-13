@@ -28,28 +28,38 @@ buybutler                    buybutler                    unraid/buybutler.xml
 
 cd "$(dirname "$0")/.."
 
-# Latest release tag of a repository; empty when there is none.
+fetch() { curl -fsSL --max-time 30 --retry 3 --retry-all-errors "$@"; }
+
+# Latest release tag of a repository. Prints nothing when the project has no
+# release (404); fails when the API can't be reached, so a transient error
+# never turns into a sync from main.
 latest_tag() {
-  curl -fsSL --max-time 30 --retry 3 --retry-all-errors \
+  json=$(mktemp)
+  code=$(curl -sSL --max-time 30 --retry 3 --retry-all-errors -o "$json" -w '%{http_code}' \
     ${GH_TOKEN:+-H "Authorization: Bearer $GH_TOKEN"} \
-    "https://api.github.com/repos/$OWNER/$1/releases/latest" 2>/dev/null |
-    sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1
+    "https://api.github.com/repos/$OWNER/$1/releases/latest") || code=000
+  case $code in
+    200) sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p;T;q' "$json" ;;
+    404) ;;
+    *) echo "$1: release lookup failed (HTTP $code)" >&2; rm -f "$json"; return 1 ;;
+  esac
+  rm -f "$json"
 }
 
 # Copy one app. Returns non-zero (and leaves templates/<app>.xml untouched)
 # when it can't, so one broken project doesn't stop the others.
 sync_app() {
   app=$1 repo=$2 path=$3
-  ref=$(latest_tag "$repo")
+  ref=$(latest_tag "$repo") || return 1
   if [ -z "$ref" ]; then
     ref=main
-    echo "$app: no release found, falling back to main" >&2
+    echo "$app: no release yet, using main" >&2
   fi
   src=https://raw.githubusercontent.com/$OWNER/$repo/$ref/$path
   [ -f "icons/$app.png" ] || { echo "$app: icons/$app.png is missing" >&2; return 1; }
   tmp=$(mktemp)
   err=
-  curl -fsSL --max-time 30 --retry 3 --retry-all-errors "$src" -o "$tmp" || err="cannot fetch $src"
+  fetch "$src" -o "$tmp" || err="cannot fetch $src"
   # A truncated download must not count as success: it has to parse as XML.
   [ -n "$err" ] || python3 -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' "$tmp" 2>/dev/null || err="$src is not well-formed XML"
   [ -n "$err" ] || grep -q '<TemplateURL>' "$tmp" || err="$src has no <TemplateURL>"
