@@ -5,6 +5,11 @@
 # here differs in two lines only: <TemplateURL> points at the copy in this
 # repository (Community Applications expects that), and <Icon> points at the
 # icon in icons/. Run it after a project changed its template, then commit.
+#
+# The template is taken from the project's latest release (the tag the
+# published image is built from), so an unreleased change on main never
+# reaches Community Applications. Without a release (or when the GitHub API
+# can't be reached) it falls back to main and says so.
 set -eu
 
 OWNER=Tom-Joad
@@ -23,15 +28,40 @@ buybutler                    buybutler                    unraid/buybutler.xml
 
 cd "$(dirname "$0")/.."
 
+fetch() { curl -fsSL --max-time 30 --retry 3 --retry-all-errors "$@"; }
+
+# Latest release tag of a repository. Prints nothing when the project has no
+# release (404); fails when the API can't be reached, so a transient error
+# never turns into a sync from main.
+latest_tag() {
+  json=$(mktemp)
+  code=$(curl -sSL --max-time 30 --retry 3 --retry-all-errors -o "$json" -w '%{http_code}' \
+    ${GH_TOKEN:+-H "Authorization: Bearer $GH_TOKEN"} \
+    "https://api.github.com/repos/$OWNER/$1/releases/latest") || code=000
+  case $code in
+    200) sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p;T;q' "$json" ;;
+    404) ;;
+    *) echo "$1: release lookup failed (HTTP $code)" >&2; rm -f "$json"; return 1 ;;
+  esac
+  rm -f "$json"
+}
+
 # Copy one app. Returns non-zero (and leaves templates/<app>.xml untouched)
 # when it can't, so one broken project doesn't stop the others.
 sync_app() {
   app=$1 repo=$2 path=$3
-  src=https://raw.githubusercontent.com/$OWNER/$repo/main/$path
+  ref=$(latest_tag "$repo") || return 1
+  if [ -z "$ref" ]; then
+    ref=main
+    echo "$app: no release yet, using main" >&2
+  fi
+  src=https://raw.githubusercontent.com/$OWNER/$repo/$ref/$path
   [ -f "icons/$app.png" ] || { echo "$app: icons/$app.png is missing" >&2; return 1; }
   tmp=$(mktemp)
   err=
-  curl -fsSL "$src" -o "$tmp" || err="cannot fetch $src"
+  fetch "$src" -o "$tmp" || err="cannot fetch $src"
+  # A truncated download must not count as success: it has to parse as XML.
+  [ -n "$err" ] || python3 -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' "$tmp" 2>/dev/null || err="$src is not well-formed XML"
   [ -n "$err" ] || grep -q '<TemplateURL>' "$tmp" || err="$src has no <TemplateURL>"
   if [ -n "$err" ]; then
     echo "$app: $err" >&2
@@ -39,12 +69,13 @@ sync_app() {
     return 1
   fi
   # Drop any icon of its own, then put ours right after the TemplateURL.
+  # Written to a temporary file first, so a failure keeps the old copy.
   sed -e '/<Icon>/d' \
       -e "s|<TemplateURL>.*</TemplateURL>|<TemplateURL>$HERE/templates/$app.xml</TemplateURL>\\
   <Icon>$HERE/icons/$app.png</Icon>|" \
-      "$tmp" > "templates/$app.xml"
-  rm -f "$tmp"
-  echo "templates/$app.xml <- $repo/$path"
+      "$tmp" > "$tmp.out" && mv "$tmp.out" "templates/$app.xml"
+  rm -f "$tmp" "$tmp.out"
+  echo "templates/$app.xml <- $repo/$path@$ref"
 }
 
 # Every app is tried; the failures are collected and reported at the end, so
