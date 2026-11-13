@@ -23,10 +23,15 @@ Security problems with a template: see [SECURITY.md](SECURITY.md).
 
 ## Installing without Community Applications
 
-1. In Unraid, open **Docker** → **Add Container**.
-2. Under **Template repositories**, add
-   `https://github.com/Tom-Joad/unraid-templates` and save.
-3. Pick the app from the **Template** list at the top of the page.
+Unraid no longer reads "Template repositories", so add the template by hand:
+
+1. Download the app's file from [templates/](templates/), for example
+   `scanbutler.xml`.
+2. Copy it to the flash drive: over the network share to
+   `\\<UNRAID-IP>\flash\config\plugins\dockerMan\templates-user\`, or from the
+   Unraid terminal into `/boot/config/plugins/dockerMan/templates-user/`.
+3. Open **Docker** → **Add Container** and pick the app from the **Template**
+   list at the top of the page.
 
 ## How this repository is built
 
@@ -50,7 +55,7 @@ To render the icons again, install the packages and pass the Anton font
 file (for example `Anton-Regular.ttf` from Google Fonts) and the output folder:
 
 ```sh
-pip install pillow fonttools brotli
+pip install -r icons/src/requirements.txt
 python icons/src/make_icons.py Anton-Regular.ttf icons
 ```
 

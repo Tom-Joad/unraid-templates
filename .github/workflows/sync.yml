@@ -20,7 +20,6 @@ jobs:
       actions: write        # start the check on the sync branch
     env:
       BRANCH: sync/templates
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -29,6 +28,10 @@ jobs:
       # last step, after the pull request has been handled.
       - name: Copy the project templates
         id: copy
+        env:
+          # Read-only use: raises the API rate limit when looking up the
+          # latest release of each project.
+          GH_TOKEN: ${{ github.token }}
         run: |
           status=0
           sh scripts/sync.sh || status=$?
@@ -36,12 +39,18 @@ jobs:
 
       - name: Open, update or close the pull request
         env:
+          GH_TOKEN: ${{ github.token }}
           SYNC_STATUS: ${{ steps.copy.outputs.status }}
         run: |
-          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          # Only the bot's own pull request from this repository counts: a
+          # fork can open a pull request from a branch with the same name,
+          # and gh pr list --head matches that one too.
+          pr=$(gh pr list --head "$BRANCH" --state open --author app/github-actions \
+            --json number,isCrossRepository \
+            --jq '[.[] | select(.isCrossRepository == false)][0].number // empty')
 
-          # Stage first: git diff ignores new (untracked) files, and -A also
-          # records a template that was deleted on purpose.
+          # Stage first: git diff ignores new (untracked) files. (sync.sh never
+          # deletes a template; a template is removed by a normal pull request.)
           git add -A templates
 
           if git diff --cached --quiet; then
@@ -72,22 +81,23 @@ jobs:
 
           # Pushes made with GITHUB_TOKEN start no workflows; a manual run
           # does, and its result shows up on the pull request's commit.
+          sha=$(git rev-parse HEAD)
           gh workflow run check.yml --ref "$BRANCH"
 
           # The check started above isn't attached to the pull request, so
           # the pull request shows no checks of its own; GitHub may also list
           # a pull_request run without jobs that "failed" (an event from the
           # bot's token). The link leads to the run that counts.
-          checks="https://github.com/${GITHUB_REPOSITORY}/actions/workflows/check.yml?query=branch%3A${BRANCH//\//%2F}"
+          checks="https://github.com/${GITHUB_REPOSITORY}/commit/${sha}/checks"
           body=$(printf '%s\n\n%s\n\n%s\n\n%s\n' \
             "One or more projects changed their Unraid template. scripts/sync.sh copied them:" \
             "$changed" \
-            "**Check:** the template check runs as a manual run on this branch and doesn't show up below; see [its runs]($checks). A pull_request run without jobs marked as failed can be ignored." \
+            "**Check:** the template check runs as a manual run on this branch and doesn't show up below; see [the checks of commit \`${sha}\`]($checks). Merge only if that commit is still the head of this pull request. A pull_request run without jobs marked as failed can be ignored." \
             "Review the diff and merge once that check is green. Community Applications picks up the change after the merge.")
           if [ -n "$pr" ]; then
             gh pr edit "$pr" --body "$body"
           else
-            gh pr create --base main --head "$BRANCH" \
+            gh pr create --base main --head "${GITHUB_REPOSITORY_OWNER}:${BRANCH}" \
               --title "Sync templates from the projects" --body "$body"
           fi
 

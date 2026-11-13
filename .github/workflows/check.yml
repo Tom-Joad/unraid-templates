@@ -38,6 +38,9 @@ jobs:
 
           base = "https://raw.githubusercontent.com/Tom-Joad/unraid-templates/main/"
           errors = []
+          allowed_extra = re.compile(
+              r"^(--security-opt no-new-privileges|--memory=\S+|--stop-timeout \d+|--read-only"
+              r"|--cap-drop ALL|--cap-add SET[UG]ID)$")
           secret = re.compile(r"TOKEN|KEY|PASSWORD|SECRET|WEBHOOK", re.I)
           ET.parse("ca_profile.xml")
           for path in sorted(glob.glob("templates/*.xml")):
@@ -70,8 +73,18 @@ jobs:
                   # *_FORMAT only selects an output format (WEBHOOK_FORMAT), no secret.
                   if secret.search(var) and not var.upper().endswith("_FORMAT") and cfg.get("Mask") != "true":
                       errors.append(f"{path}: {var} holds a secret and needs Mask=\"true\"")
-              if any(p in get("ExtraParams") for p in ("--restart", "--init")):
-                  errors.append(f"{path}: --restart/--init in <ExtraParams>")
+              app = os.path.basename(path)[:-4]
+              if get("Repository") != f"ghcr.io/tom-joad/{app}:latest":
+                  errors.append(f"{path}: <Repository> must be ghcr.io/tom-joad/{app}:latest (image = app = file name)")
+              if get("Privileged").lower() != "false":
+                  errors.append(f"{path}: <Privileged> must be false")
+              # Same allowlist as Package-Defaults tools/audit.py (ALLOWED_EXTRA).
+              extra = get("ExtraParams")
+              for p in re.findall(r"--[\w-]+(?:[ =](?!--)\S+)?", extra):
+                  if not allowed_extra.match(p):
+                      errors.append(f"{path}: <ExtraParams> `{p}` is not in the standard")
+              if re.sub(r"--[\w-]+(?:[ =](?!--)\S+)?", "", extra).strip():
+                  errors.append(f"{path}: <ExtraParams> has text that is not a --option: {extra}")
           print("\n".join(errors) or "all templates ok")
           sys.exit(1 if errors else 0)
 

@@ -6,3 +6,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+
+  # The icon renderer's packages (icons/src/requirements.txt).
+  - package-ecosystem: pip
+    directory: /icons/src
+    schedule:
+      interval: weekly

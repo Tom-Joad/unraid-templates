@@ -6,7 +6,7 @@ The font is Anton (SIL Open Font License 1.1), for example Anton-Regular.ttf
 from Google Fonts; a woff2 file works too. Needs Python packages
 Pillow and fonttools (with brotli for woff2):
 
-    pip install pillow fonttools brotli
+    pip install -r requirements.txt
 
 Writes one 512x512 <app>.png per entry of ICONS into the output folder
 (icons/ in this repository).
